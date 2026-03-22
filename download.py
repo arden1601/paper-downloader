@@ -491,12 +491,24 @@ class IEEEScraper(BaseScraper):
                         if article_url and not article_url.startswith('http'):
                             article_url = to_ezproxy_url(f"{self.base_url}{article_url}")
 
+                    # Try to find PDF link
+                    pdf_url = None
+                    pdf_btn = await item.query_selector('a[href*="pdf"], a[href*=".pdf"], .pdf-download')
+                    if pdf_btn:
+                        href = await pdf_btn.get_attribute('href')
+                        if href:
+                            if href.startswith('http'):
+                                pdf_url = href
+                            else:
+                                pdf_url = to_ezproxy_url(f"{self.base_url}{href}")
+
                     paper = Paper(
                         title=title,
                         authors=authors,
                         year=year,
                         doi=doi,
                         url=article_url,
+                        pdf_url=pdf_url,
                         database=self.name
                     )
                     papers.append(paper)
@@ -579,12 +591,24 @@ class ScienceDirectScraper(BaseScraper):
                         if article_url and not article_url.startswith('http'):
                             article_url = to_ezproxy_url(f"{self.base_url}{article_url}")
 
+                    # Try to find PDF link
+                    pdf_url = None
+                    pdf_btn = await item.query_selector('a[href*="pdf"], a[href*=".pdf"], .download-link')
+                    if pdf_btn:
+                        href = await pdf_btn.get_attribute('href')
+                        if href:
+                            if href.startswith('http'):
+                                pdf_url = href
+                            else:
+                                pdf_url = to_ezproxy_url(f"{self.base_url}{href}")
+
                     paper = Paper(
                         title=title,
                         authors=authors,
                         year=year,
                         journal=journal,
                         url=article_url,
+                        pdf_url=pdf_url,
                         database=self.name
                     )
                     papers.append(paper)
@@ -671,6 +695,17 @@ class SpringerScraper(BaseScraper):
                             if doi_match:
                                 doi = f"10.1007/{doi_match.group(1)}"
 
+                    # Try to find PDF link
+                    pdf_url = None
+                    pdf_btn = await item.query_selector('a[href*="pdf"], a[href$=".pdf"], .pdf-link')
+                    if pdf_btn:
+                        href = await pdf_btn.get_attribute('href')
+                        if href:
+                            if href.startswith('http'):
+                                pdf_url = href
+                            else:
+                                pdf_url = to_ezproxy_url(f"{self.base_url}{href}")
+
                     paper = Paper(
                         title=title,
                         authors=authors,
@@ -678,6 +713,7 @@ class SpringerScraper(BaseScraper):
                         doi=doi,
                         journal=journal,
                         url=article_url,
+                        pdf_url=pdf_url,
                         database=self.name
                     )
                     papers.append(paper)
@@ -887,15 +923,24 @@ class PaperDownloader:
                         topic_dir = self.download_dir / topic
                         topic_dir.mkdir(parents=True, exist_ok=True)
 
+                        # Try to download PDF
+                        pdf_path = None
+                        if paper.pdf_url:
+                            pdf_path = await scraper.download_pdf(paper, topic_dir)
+                            if pdf_path:
+                                self.console.print(f"  [dim]    PDF saved: {pdf_path}[/dim]")
+                        else:
+                            self.console.print(f"  [dim]    No direct PDF URL available[/dim]")
+
                         # Merge BibTeX
                         status, key = self.bibtex_merger.merge(paper)
 
                         if status == "added":
-                            self.console.print(f"  [green]✓ [{i+1}/{len(papers)}] Downloaded: {paper.title[:60]}...[/green]")
+                            self.console.print(f"  [green]✓ [{i+1}/{len(papers)}] Saved: {paper.title[:60]}...[/green]")
                             self.console.print(f"    [dim]BibTeX key: {key}[/dim]")
 
                             # Save to database
-                            self.library.add_paper(paper, status='downloaded')
+                            self.library.add_paper(paper, pdf_path=pdf_path, status='downloaded')
                             db_results['downloaded'] += 1
                         else:
                             self.console.print(f"  [red]✗ [{i+1}/{len(papers)}] Failed: {paper.title[:60]}...[/red]")
