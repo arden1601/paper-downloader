@@ -476,9 +476,18 @@ class BaseScraper(ABC):
             filename = f"{safe_title}.pdf"
             filepath = download_dir / filename
 
-            # Download
-            async with self.page.context.expect_download() as download_info:
-                await self.page.click(f'a[href*="{paper.pdf_url}"]', timeout=10000)
+            # Check if it's a direct PDF URL (contains .pdf or pdf.sciencedirect)
+            is_direct_pdf = '.pdf' in paper.pdf_url.lower() or 'pdf.' in paper.pdf_url.lower()
+
+            if is_direct_pdf:
+                # Direct PDF URL - navigate to it and wait for download
+                async with self.page.expect_download(timeout=60000) as download_info:
+                    await self.page.goto(paper.pdf_url, wait_until='load', timeout=60000)
+                download = await download_info.value
+            else:
+                # Try to find and click download button
+                async with self.page.expect_download(timeout=60000) as download_info:
+                    await self.page.click(f'a[href*="{paper.pdf_url}"]', timeout=10000)
                 download = await download_info.value
 
             await download.save_as(filepath)
