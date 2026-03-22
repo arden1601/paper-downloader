@@ -476,16 +476,21 @@ class BaseScraper(ABC):
             filename = f"{safe_title}.pdf"
             filepath = download_dir / filename
 
-            # Check if it's a direct PDF URL (contains .pdf or pdf.sciencedirect)
-            is_direct_pdf = '.pdf' in paper.pdf_url.lower() or 'pdf.' in paper.pdf_url.lower()
+            # Check if this is a ScienceDirect /pdfft URL
+            is_pdfft_url = '/pdfft' in paper.pdf_url.lower()
 
-            if is_direct_pdf:
-                # Direct PDF URL - navigate to it and wait for download
+            if is_pdfft_url:
+                # ScienceDirect /pdfft endpoint - navigate to it, triggers PDF download
+                async with self.page.expect_download(timeout=60000) as download_info:
+                    await self.page.goto(paper.pdf_url, wait_until='load', timeout=60000)
+                download = await download_info.value
+            elif '.pdf' in paper.pdf_url.lower():
+                # Direct PDF URL
                 async with self.page.expect_download(timeout=60000) as download_info:
                     await self.page.goto(paper.pdf_url, wait_until='load', timeout=60000)
                 download = await download_info.value
             else:
-                # Try to find and click download button
+                # Try to click download button
                 async with self.page.expect_download(timeout=60000) as download_info:
                     await self.page.click(f'a[href*="{paper.pdf_url}"]', timeout=10000)
                 download = await download_info.value
@@ -662,9 +667,11 @@ class ScienceDirectScraper(BaseScraper):
                         if article_url and not article_url.startswith('http'):
                             article_url = to_ezproxy_url(f"{self.base_url}{article_url}")
 
-                    # Try to find PDF link
+                    # Try to find PDF link - ScienceDirect uses /pdfft endpoint
                     pdf_url = None
-                    pdf_btn = await item.query_selector('a[href*="pdf"], a[href*=".pdf"], .download-link')
+
+                    # Method 1: Look for "View PDF" or download link
+                    pdf_btn = await item.query_selector('a[href*="pdfft"], a[href*="/pdf"], .download-link')
                     if pdf_btn:
                         href = await pdf_btn.get_attribute('href')
                         if href:
@@ -672,6 +679,12 @@ class ScienceDirectScraper(BaseScraper):
                                 pdf_url = href
                             else:
                                 pdf_url = to_ezproxy_url(f"{self.base_url}{href}")
+
+                    # Method 2: Construct PDF URL from article URL (/pdfft endpoint)
+                    if not pdf_url and article_url:
+                        if '/article/pii/' in article_url:
+                            # ScienceDirect PDF format: /science/article/pii/XXXXX/pdfft
+                            pdf_url = f"{article_url}/pdfft"
 
                     paper = Paper(
                         title=title,
