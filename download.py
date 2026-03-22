@@ -444,7 +444,7 @@ class IEEEScraper(BaseScraper):
         search_url = f"{self.base_url}/search/searchresult.jsp?newsearch=true&queryText={quote_plus(query)}"
         ezproxy_url = to_ezproxy_url(search_url)
 
-        await self.page.goto(ezproxy_url, wait_until='networkidle', timeout=30000)
+        await self.page.goto(ezproxy_url, wait_until='load', timeout=30000)
         await self.random_delay()
 
         papers = []
@@ -535,7 +535,7 @@ class ScienceDirectScraper(BaseScraper):
         search_url = f"{self.base_url}/search?qs={quote_plus(query)}"
         ezproxy_url = to_ezproxy_url(search_url)
 
-        await self.page.goto(ezproxy_url, wait_until='networkidle', timeout=30000)
+        await self.page.goto(ezproxy_url, wait_until='load', timeout=30000)
         await self.random_delay()
 
         papers = []
@@ -621,7 +621,7 @@ class SpringerScraper(BaseScraper):
         search_url = f"{self.base_url}/search?query={quote_plus(query)}"
         ezproxy_url = to_ezproxy_url(search_url)
 
-        await self.page.goto(ezproxy_url, wait_until='networkidle', timeout=30000)
+        await self.page.goto(ezproxy_url, wait_until='load', timeout=30000)
         await self.random_delay()
 
         papers = []
@@ -748,7 +748,7 @@ class EzproxySession:
 
         # Navigate to ezproxy login
         self.console.print(f"\n[bold blue]→ Opening ezproxy login:[/] {ezproxy_url}")
-        await self.page.goto(ezproxy_url, wait_until='networkidle')
+        await self.page.goto(ezproxy_url, wait_until='load')
 
         self.console.print(Panel.fit(
             "[bold yellow]ACTION REQUIRED[/bold yellow]\n\n"
@@ -765,7 +765,13 @@ class EzproxySession:
 
         # Verify login by checking if we can access a protected resource via ezproxy
         self.console.print(f"[dim]Verifying login via: {ezproxy_check_url}[/dim]")
-        await self.page.goto(ezproxy_check_url, wait_until='networkidle', timeout=15000)
+        try:
+            # Use 'load' instead of 'networkidle' - more lenient
+            await self.page.goto(ezproxy_check_url, wait_until='load', timeout=30000)
+            # Wait a bit for any redirects
+            await asyncio.sleep(2)
+        except Exception as e:
+            self.console.print(f"[yellow]⚠️  Navigation timeout, but continuing anyway: {e}[/yellow]")
 
         current_url = self.page.url
         if 'ezproxy.ugm.ac.id' in current_url:
@@ -773,7 +779,7 @@ class EzproxySession:
         elif 'login' in current_url.lower():
             self.console.print("[yellow]⚠️  Redirected to login page. Please try again.[/yellow]")
         else:
-            self.console.print(f"[yellow]⚠️  Unexpected URL: {current_url}. Proceeding anyway...[/yellow]")
+            self.console.print(f"[yellow]⚠️  Current URL: {current_url}. Proceeding anyway...[/yellow]")
 
 
 # ============================================================================
