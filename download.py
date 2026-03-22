@@ -87,6 +87,33 @@ def load_config(config_path: str = "config.yaml") -> dict:
         return yaml.safe_load(DEFAULT_CONFIG)
 
 
+def to_ezproxy_url(url: str, ezproxy_domain: str = "ezproxy.ugm.ac.id") -> str:
+    """
+    Transform a URL to its ezproxy-proxied version.
+
+    Example:
+        https://ieeexplore.ieee.org/document/123
+        → https://ieeexplore-ieee-org.ezproxy.ugm.ac.id/document/123
+    """
+    from urllib.parse import urlparse, urlunparse
+
+    parsed = urlparse(url)
+    netloc = parsed.netloc
+
+    # Transform domain: replace dots with dashes, then append ezproxy domain
+    proxy_netloc = f"{netloc.replace('.', '-')}.{ezproxy_domain}"
+
+    # Reconstruct URL
+    return urlunparse((
+        parsed.scheme,
+        proxy_netloc,
+        parsed.path,
+        parsed.params,
+        parsed.query,
+        parsed.fragment
+    ))
+
+
 # ============================================================================
 # DATA CLASSES
 # ============================================================================
@@ -409,12 +436,15 @@ class IEEEScraper(BaseScraper):
     def __init__(self, page: Page, config: dict):
         super().__init__(page, config)
         self.name = "ieee"
+        self.base_url = "https://ieeexplore.ieee.org"
 
     async def search(self, query: str, max_results: int) -> List[Paper]:
-        """Search IEEE Xplore."""
-        search_url = f"https://ieeexplore.ieee.org/search/searchresult.jsp?newsearch=true&queryText={quote_plus(query)}"
+        """Search IEEE Xplore via ezproxy."""
+        # Build ezproxy-proxied URL
+        search_url = f"{self.base_url}/search/searchresult.jsp?newsearch=true&queryText={quote_plus(query)}"
+        ezproxy_url = to_ezproxy_url(search_url)
 
-        await self.page.goto(search_url, wait_until='networkidle', timeout=30000)
+        await self.page.goto(ezproxy_url, wait_until='networkidle', timeout=30000)
         await self.random_delay()
 
         papers = []
@@ -452,13 +482,14 @@ class IEEEScraper(BaseScraper):
                     if doi_elem:
                         doi = await doi_elem.get_attribute('data-doi')
 
-                    # Get article URL
+                    # Get article URL (already proxied via ezproxy)
                     article_url = None
                     link_elem = await item.query_selector('h2 a, h3 a')
                     if link_elem:
                         article_url = await link_elem.get_attribute('href')
+                        # URL is already in ezproxy format from the page
                         if article_url and not article_url.startswith('http'):
-                            article_url = f"https://ieeexplore.ieee.org{article_url}"
+                            article_url = to_ezproxy_url(f"{self.base_url}{article_url}")
 
                     paper = Paper(
                         title=title,
@@ -496,12 +527,15 @@ class ScienceDirectScraper(BaseScraper):
     def __init__(self, page: Page, config: dict):
         super().__init__(page, config)
         self.name = "sciencedirect"
+        self.base_url = "https://www.sciencedirect.com"
 
     async def search(self, query: str, max_results: int) -> List[Paper]:
-        """Search ScienceDirect."""
-        search_url = f"https://www.sciencedirect.com/search?qs={quote_plus(query)}"
+        """Search ScienceDirect via ezproxy."""
+        # Build ezproxy-proxied URL
+        search_url = f"{self.base_url}/search?qs={quote_plus(query)}"
+        ezproxy_url = to_ezproxy_url(search_url)
 
-        await self.page.goto(search_url, wait_until='networkidle', timeout=30000)
+        await self.page.goto(ezproxy_url, wait_until='networkidle', timeout=30000)
         await self.random_delay()
 
         papers = []
@@ -537,13 +571,13 @@ class ScienceDirectScraper(BaseScraper):
                     journal_elem = await item.query_selector('.publication-title, .journal-name')
                     journal = await journal_elem.inner_text() if journal_elem else None
 
-                    # Get article URL
+                    # Get article URL (already proxied via ezproxy)
                     article_url = None
                     link_elem = await item.query_selector('h2 a, a.result-list-title-link')
                     if link_elem:
                         article_url = await link_elem.get_attribute('href')
                         if article_url and not article_url.startswith('http'):
-                            article_url = f"https://www.sciencedirect.com{article_url}"
+                            article_url = to_ezproxy_url(f"{self.base_url}{article_url}")
 
                     paper = Paper(
                         title=title,
@@ -579,12 +613,15 @@ class SpringerScraper(BaseScraper):
     def __init__(self, page: Page, config: dict):
         super().__init__(page, config)
         self.name = "springer"
+        self.base_url = "https://link.springer.com"
 
     async def search(self, query: str, max_results: int) -> List[Paper]:
-        """Search SpringerLink."""
-        search_url = f"https://link.springer.com/search?query={quote_plus(query)}"
+        """Search SpringerLink via ezproxy."""
+        # Build ezproxy-proxied URL
+        search_url = f"{self.base_url}/search?query={quote_plus(query)}"
+        ezproxy_url = to_ezproxy_url(search_url)
 
-        await self.page.goto(search_url, wait_until='networkidle', timeout=30000)
+        await self.page.goto(ezproxy_url, wait_until='networkidle', timeout=30000)
         await self.random_delay()
 
         papers = []
@@ -620,14 +657,14 @@ class SpringerScraper(BaseScraper):
                     journal_elem = await item.query_selector('.app-card-open__meta-item, .source')
                     journal = await journal_elem.inner_text() if journal_elem else None
 
-                    # Get article URL and DOI
+                    # Get article URL and DOI (already proxied via ezproxy)
                     article_url = None
                     doi = None
                     link_elem = await item.query_selector('h3 a, .title a')
                     if link_elem:
                         article_url = await link_elem.get_attribute('href')
                         if article_url and not article_url.startswith('http'):
-                            article_url = f"https://link.springer.com{article_url}"
+                            article_url = to_ezproxy_url(f"{self.base_url}{article_url}")
                         # Extract DOI from URL
                         if article_url and '/article/' in article_url:
                             doi_match = re.search(r'/article/([^/]+)', article_url)
@@ -706,6 +743,9 @@ class EzproxySession:
         login_timeout = self.config['ezproxy']['login_timeout']
         check_url = self.config['ezproxy'].get('login_check_url', 'https://ieeexplore.ieee.org')
 
+        # Transform check URL to ezproxy format
+        ezproxy_check_url = to_ezproxy_url(check_url)
+
         # Navigate to ezproxy login
         self.console.print(f"\n[bold blue]→ Opening ezproxy login:[/] {ezproxy_url}")
         await self.page.goto(ezproxy_url, wait_until='networkidle')
@@ -713,24 +753,27 @@ class EzproxySession:
         self.console.print(Panel.fit(
             "[bold yellow]ACTION REQUIRED[/bold yellow]\n\n"
             f"1. Login to UGM ezproxy in the browser window\n"
-            f"2. Wait until you see the IEEE/sciencedirect page\n"
+            f"2. Navigate to any database (IEEE, ScienceDirect, Springer)\n"
             f"3. Press [bold green]ENTER[/bold green] here when logged in\n\n"
-            f"[dim]Timeout: {login_timeout}s[/dim]",
+            f"[dim]Timeout: {login_timeout}s[/dim]\n"
+            f"[dim]After login, URLs will be auto-transformed to ezproxy format[/dim]",
             title="🔐 Manual Login Required"
         ))
 
         # Wait for user input
         input(self.console.input("[bold green]Press ENTER when logged in...[/bold green]"))
 
-        # Verify login by checking if we can access a protected resource
-        self.console.print("[dim]Verifying login...[/dim]")
-        await self.page.goto(check_url, wait_until='networkidle', timeout=15000)
+        # Verify login by checking if we can access a protected resource via ezproxy
+        self.console.print(f"[dim]Verifying login via: {ezproxy_check_url}[/dim]")
+        await self.page.goto(ezproxy_check_url, wait_until='networkidle', timeout=15000)
 
         current_url = self.page.url
-        if 'ezproxy' in current_url or 'login' in current_url.lower():
-            self.console.print("[yellow]⚠️  Login may not be complete. Proceeding anyway...[/yellow]")
+        if 'ezproxy.ugm.ac.id' in current_url:
+            self.console.print(f"[green]✓ Login verified! Using ezproxy URL: {current_url}[/green]")
+        elif 'login' in current_url.lower():
+            self.console.print("[yellow]⚠️  Redirected to login page. Please try again.[/yellow]")
         else:
-            self.console.print("[green]✓ Login verified![/green]")
+            self.console.print(f"[yellow]⚠️  Unexpected URL: {current_url}. Proceeding anyway...[/yellow]")
 
 
 # ============================================================================
