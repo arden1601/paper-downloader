@@ -268,6 +268,68 @@ class Library:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
+    def clear_database(self) -> dict:
+        """Clear all papers from database. Returns counts of deleted items."""
+        with sqlite3.connect(self.db_path) as conn:
+            # Get counts before deleting
+            papers_count = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
+            searches_count = conn.execute("SELECT COUNT(*) FROM searches").fetchone()[0]
+
+            # Delete all records
+            conn.execute("DELETE FROM papers")
+            conn.execute("DELETE FROM searches")
+
+            return {
+                'papers_deleted': papers_count,
+                'searches_deleted': searches_count
+            }
+
+    def get_stats(self) -> dict:
+        """Get database statistics."""
+        with sqlite3.connect(self.db_path) as conn:
+            papers_count = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
+            searches_count = conn.execute("SELECT COUNT(*) FROM searches").fetchone()[0]
+            topics = conn.execute("SELECT DISTINCT topic FROM papers WHERE topic IS NOT NULL").fetchall()
+            databases = conn.execute("SELECT DISTINCT database FROM papers WHERE database IS NOT NULL").fetchall()
+
+            return {
+                'total_papers': papers_count,
+                'total_searches': searches_count,
+                'topics': [t[0] for t in topics],
+                'databases': [d[0] for d in databases]
+            }
+
+    def clear_database(self) -> dict:
+        """Clear all papers and search history from database. Returns counts deleted."""
+        with sqlite3.connect(self.db_path) as conn:
+            # Count before deletion
+            papers_count = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
+            searches_count = conn.execute("SELECT COUNT(*) FROM searches").fetchone()[0]
+
+            # Delete all records
+            conn.execute("DELETE FROM papers")
+            conn.execute("DELETE FROM searches")
+
+            return {
+                'papers_deleted': papers_count,
+                'searches_deleted': searches_count
+            }
+
+    def get_stats(self) -> dict:
+        """Get database statistics."""
+        with sqlite3.connect(self.db_path) as conn:
+            papers_count = conn.execute("SELECT COUNT(*) FROM papers").fetchone()[0]
+            searches_count = conn.execute("SELECT COUNT(*) FROM searches").fetchone()[0]
+            topics = conn.execute("SELECT DISTINCT topic FROM papers WHERE topic IS NOT NULL").fetchall()
+            databases = conn.execute("SELECT DISTINCT database FROM papers WHERE database IS NOT NULL").fetchall()
+
+            return {
+                'total_papers': papers_count,
+                'total_searches': searches_count,
+                'topics': [t[0] for t in topics],
+                'databases': [d[0] for d in databases]
+            }
+
     def get_existing_keys(self) -> set:
         """Get all existing BibTeX keys."""
         with sqlite3.connect(self.db_path) as conn:
@@ -1127,6 +1189,10 @@ Examples:
                         help='List downloaded papers')
     parser.add_argument('--all', '-a', action='store_true',
                         help='Run all searches from config.yaml')
+    parser.add_argument('--clear-db', action='store_true',
+                        help='Clear database (delete all papers and searches)')
+    parser.add_argument('--stats', action='store_true',
+                        help='Show database statistics')
 
     # Search options
     parser.add_argument('--search', '-s', type=str,
