@@ -1,0 +1,18 @@
+# Paper Downloader Dependencies
+# Install with: pip install -r requirements.txt
+
+# Browser automation
+playwright>=1.40.0
+
+# BibTeX parsing and generation
+bibtexparser>=1.4.0
+
+# Configuration
+pyyaml>=6.0.0
+
+# CLI enhancements
+rich>=13.7.0
+argparse
+
+# Utilities
+python-dotenv>=1.0.0

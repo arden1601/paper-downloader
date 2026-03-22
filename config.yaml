@@ -1,0 +1,99 @@
+# Paper Downloader Configuration
+# ================================
+
+# Ezproxy settings
+ezproxy:
+  url: "https://ezproxy.ugm.ac.id/login"
+  login_timeout: 300  # 5 minutes max for manual login
+  login_check_url: "https://ieeexplore.ieee.org"  # URL to check if logged in
+
+# Database settings
+databases:
+  - name: ieee
+    enabled: true
+    search_url: "https://ieeexplore.ieee.org/search/searchresult.jsp?newsearch=true&queryText={query}"
+
+  - name: sciencedirect
+    enabled: true
+    search_url: "https://www.sciencedirect.com/search?qs={query}"
+
+  - name: springer
+    enabled: true
+    search_url: "https://link.springer.com/search?query={query}"
+
+# Download settings
+download:
+  max_per_database: 5      # Max papers to download per database per search
+  delay_min: 2             # Minimum delay between requests (seconds)
+  delay_max: 4             # Maximum delay between requests (seconds)
+  retry_max: 3             # Max retry attempts
+  timeout: 30              # Page load timeout (seconds)
+  headless: false          # Show browser window (set true for background)
+
+# Storage paths
+paths:
+  downloads: "./downloads"
+  database: "./library.db"
+  bibtex: "../template-skripsi/daftar-pustaka.bib"
+  logs: "./logs"
+
+# Predefined searches for blockchain RWA thesis
+# Run with: python download.py --all
+searches:
+  # RWA Tokenization
+  - query: "blockchain real world assets tokenization"
+    topic: "blockchain-rwa"
+    max_results: 10
+
+  - query: "asset tokenization ERC-721 smart contract"
+    topic: "blockchain-rwa"
+    max_results: 10
+
+  # NFT Asset Tracking
+  - query: "NFT asset tracking supply chain"
+    topic: "nft-asset-tracking"
+    max_results: 10
+
+  - query: "ERC-721 provenance tracking blockchain"
+    topic: "nft-asset-tracking"
+    max_results: 10
+
+  # Smart Contract & RBAC
+  - query: "smart contract access control RBAC"
+    topic: "smart-contract-rbac"
+    max_results: 10
+
+  - query: "OpenZeppelin AccessControl role-based"
+    topic: "smart-contract-rbac"
+    max_results: 10
+
+  # IPFS & Decentralized Storage
+  - query: "IPFS decentralized storage blockchain"
+    topic: "ipfs-storage"
+    max_results: 10
+
+  - query: "IPFS document certification blockchain"
+    topic: "ipfs-storage"
+    max_results: 10
+
+  # Supply Chain Traceability
+  - query: "supply chain traceability blockchain"
+    topic: "supply-chain-traceability"
+    max_results: 10
+
+  - query: "product authentication blockchain NFT"
+    topic: "supply-chain-traceability"
+    max_results: 10
+
+  # Calibration & Quality (specific to thesis)
+  - query: "calibration tracking blockchain"
+    topic: "calibration-tracking"
+    max_results: 10
+
+  - query: "laboratory equipment certification blockchain"
+    topic: "calibration-tracking"
+    max_results: 10
+
+  - query: "immutable records quality assurance"
+    topic: "calibration-tracking"
+    max_results: 10
