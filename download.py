@@ -1104,6 +1104,31 @@ class PaperDownloader:
         if export_bib:
             self._export_bibtex(papers, export_bib)
 
+    def clear_database(self):
+        """Clear all papers and searches from database."""
+        result = self.library.clear_database()
+
+        self.console.print(Panel.fit(
+            f"[bold green]✓ Database cleared![/bold green]\n\n"
+            f"  Papers deleted: [bold]{result['papers_deleted']}[/bold]\n"
+            f"  Searches deleted: [bold]{result['searches_deleted']}[/bold]\n\n"
+            f"[dim]The download directory is not affected.[/dim]",
+            title="🗑️ Clear Database"
+        ))
+
+    def show_stats(self):
+        """Show database statistics."""
+        stats = self.library.get_stats()
+
+        self.console.print(Panel.fit(
+            f"[bold]📊 Library Statistics[/bold]\n\n"
+            f"  Total papers: [bold cyan]{stats['total_papers']}[/bold cyan]\n"
+            f"  Total searches: [bold cyan]{stats['total_searches']}[/bold cyan]\n"
+            f"  Topics: [bold]{', '.join(stats['topics']) if stats['topics'] else '[dim]None[/dim]'}[/bold]\n"
+            f"  Databases: [bold]{', '.join(stats['databases']) if stats['databases'] else '[dim]None[/dim]'}[/bold]",
+            title="📈 Library Statistics"
+        ))
+
     def _export_bibtex(self, papers: List[dict], output_path: str):
         """Export papers to BibTeX file."""
         with open(output_path, 'w', encoding='utf-8') as f:
@@ -1224,6 +1249,16 @@ Examples:
     # Handle list mode
     if args.list:
         downloader.list_papers(args.year, args.topic, args.export_bib)
+        return
+
+    # Handle clear database
+    if args.clear_db:
+        downloader.clear_database()
+        return
+
+    # Handle stats
+    if args.stats:
+        downloader.show_stats()
         return
 
     # Handle search/download mode
