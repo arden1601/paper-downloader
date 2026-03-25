@@ -76,6 +76,8 @@ Examples:
     # Other options
     parser.add_argument('--dry-run', '-n', action='store_true',
                         help='Preview without downloading')
+    parser.add_argument('--no-download', action='store_true',
+                        help='Save papers without downloading PDFs')
     parser.add_argument('--config', '-c', type=str, default='config.yaml',
                         help='Path to config file')
 
@@ -113,7 +115,8 @@ Examples:
             topic=args.topic,
             max_results=args.max,
             databases=databases,
-            dry_run=args.dry_run
+            dry_run=args.dry_run,
+            no_download=args.no_download
         ))
     else:
         parser.print_help()

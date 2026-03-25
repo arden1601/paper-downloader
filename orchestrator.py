@@ -68,6 +68,7 @@ class PaperDownloader:
         max_results: int = None,
         databases: List[str] = None,
         dry_run: bool = False,
+        no_download: bool = False,
         session: EzproxySession = None
     ) -> dict:
         """Search and download papers for a query."""
@@ -120,6 +121,20 @@ class PaperDownloader:
                     if dry_run:
                         self.console.print(f"  [yellow]📄 [{i+1}/{len(papers)}] Would download: {paper.title[:60]}...[/yellow]")
                         db_results['downloaded'] += 1
+                        continue
+
+                    # No-download mode: save metadata without PDF
+                    if no_download:
+                        status, key = self.bibtex_merger.merge(paper)
+                        if status == "added":
+                            self.console.print(f"  [cyan]💾 [{i+1}/{len(papers)}] Saved (no PDF): {paper.title[:60]}...[/cyan]")
+                            if paper.pdf_url:
+                                self.console.print(f"    [dim]PDF URL: {paper.pdf_url[:80]}...[/dim]")
+                            self.library.add_paper(paper, pdf_path=None, status='pending')
+                            db_results['downloaded'] += 1
+                        else:
+                            self.console.print(f"  [red]✗ [{i+1}/{len(papers)}] Failed: {paper.title[:60]}...[/red]")
+                            db_results['failed'] += 1
                         continue
 
                     # Download and save
@@ -178,7 +193,8 @@ class PaperDownloader:
         topic: str = None,
         max_results: int = None,
         databases: List[str] = None,
-        dry_run: bool = False
+        dry_run: bool = False,
+        no_download: bool = False
     ):
         """Run interactive download session."""
 
@@ -188,7 +204,7 @@ class PaperDownloader:
             if query:
                 # Single search
                 results = await self.search_and_download(
-                    query, topic, max_results, databases, dry_run, session
+                    query, topic, max_results, databases, dry_run, no_download, session
                 )
                 self._print_summary([results])
             else:
@@ -207,7 +223,7 @@ class PaperDownloader:
                     search_max = search_config.get('max_results', max_results)
 
                     results = await self.search_and_download(
-                        search_query, search_topic, search_max, databases, dry_run, session
+                        search_query, search_topic, search_max, databases, dry_run, no_download, session
                     )
                     all_results.append(results)
 

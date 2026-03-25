@@ -56,6 +56,11 @@ class Library:
                     searched_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+            # Migration: add pdf_url column if missing
+            try:
+                conn.execute("ALTER TABLE papers ADD COLUMN pdf_url TEXT")
+            except sqlite3.OperationalError:
+                pass  # Column already exists
 
     def paper_exists(self, paper: Paper) -> bool:
         """Check if paper already exists (by DOI or title)."""
